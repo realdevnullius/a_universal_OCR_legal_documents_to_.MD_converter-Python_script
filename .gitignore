@@ -1,0 +1,21 @@
+# Ignore the _FAILED cache directory entirely
+**/_FAILED/
+
+# Ignore all source legal documents and evidence formats
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.docx
+*.pptx
+
+# Ignore all generated markdown case files
+*.md
+
+# Except the documentation README file
+!README.md
+
+# Ignore local temporary files and python caches
+__pycache__/
+*.tmp
