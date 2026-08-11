@@ -15,17 +15,23 @@ This script uses **IBM's Docling** for high-fidelity layout preservation and **T
 
 ## Prerequisites (Windows x64 Setup)
 
-### 1. Install Tesseract OCR
-1. Download the Windows x64 binaries installer (e.g., from UB Mannheim or official Tesseract repositories). In 2026, the download location is: https://github.com/UB-Mannheim/tesseract/wiki 
+### 1. Install Python (Via Microsoft Store)
+1. Open the **Microsoft Store** on your Windows x64 machine.
+2. Search for **Python 3.9** (or a newer stable release like 3.10/3.11) and click **Get/Install**.
+3. *Note: This script is explicitly optimized to handle the isolated user profile paths and sandboxed environment limitations created by the Microsoft Store version of Python.*
+
+### 2. Install Tesseract OCR
+1. Download the Windows x64 binaries installer (e.g., from UB Mannheim or official Tesseract repositories).
 2. Run the installer. **Important:** During the setup wizard, expand the **Additional Language Data** menu and check the box for **Dutch** (`nld`), or any other required pack from the supported list below.
 3. By default, it will install to `C:\Program Files\Tesseract-OCR\tesseract.exe`.
 
-### 2. Install Python Packages
-Open Windows PowerShell and run the following command to install the layout extraction frameworks:
+### 3. Install Python Packages
+Open Windows PowerShell and run the following command to install the required layout extraction frameworks:
 
 ```powershell
 pip install docling
 ```
+
 
 ---
 
