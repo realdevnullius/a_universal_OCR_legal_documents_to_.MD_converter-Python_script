@@ -1,0 +1,2 @@
+# a_universal_OCR_legal_documents_to_.MD_converter-Python_script
+Legal &amp; Judicial Document to Markdown Batch Converter - A robust, privacy-focused tool optimised for batch-converting complex judicial documents, court decisions, legal correspondence (including dense email threads), and photographed case evidence into structured, LLM-ready Markdown (`.md`) Files. Support for many languages, see source code!
