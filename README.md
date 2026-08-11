@@ -16,7 +16,7 @@ This script uses **IBM's Docling** for high-fidelity layout preservation and **T
 ## Prerequisites (Windows x64 Setup)
 
 ### 1. Install Tesseract OCR
-1. Download the Windows x64 binaries installer (e.g., from UB Mannheim or official Tesseract repositories).
+1. Download the Windows x64 binaries installer (e.g., from UB Mannheim or official Tesseract repositories). In 2026, the download location is: https://github.com/UB-Mannheim/tesseract/wiki 
 2. Run the installer. **Important:** During the setup wizard, expand the **Additional Language Data** menu and check the box for **Dutch** (`nld`), or any other required pack from the supported list below.
 3. By default, it will install to `C:\Program Files\Tesseract-OCR\tesseract.exe`.
 
