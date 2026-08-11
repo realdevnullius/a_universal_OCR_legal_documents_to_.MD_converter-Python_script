@@ -19,11 +19,9 @@ Key features include:
 ------------------------------
 Thanks to Docling's robust multi-format document assembly backend, you can ingest 
 many other legal data inputs without installing any extra software on your computer. 
-The system inherently reads and parses:
-  - Word Documents: '.docx' (Perfect for legal drafts, claims, and briefs)
-  - Powerpoint Slides: '.pptx' (Useful for corporate legal strategy presentations)
-  - Web & Rich Content: '.html', '.xhtml', '.rtf' (Perfect for scanned case laws)
-To activate these file extensions, simply look at Section 4 in the script below 
+The system inherently reads and parses Word Documents (.docx), Powerpoint Slides 
+(.pptx), Web and Rich Content (.html, .xhtml, .rtf).
+To activate these file extensions, simply look at Section 2 in the script below 
 and append any of these formats to the 'extensions' list (e.g., adding "*.docx").
 
 3. AVAILABLE OCR LANGUAGES (TESSERACT SELECTION):
@@ -60,7 +58,7 @@ Experience demonstrates that sequential passes frequently succeed where primary 
 due to system memory freeing up. Follow this recovery loop:
   1. Let the primary script execution complete its pass over the main directory.
   2. Copy this script ('jpg.pdf.convert.py') directly into the newly created './_FAILED' folder.
-  3. Run the script inside the '_FAILED' folder via PowerShell: "python .\jpg.pdf.convert.py"
+  3. Run the script inside the '_FAILED' folder via PowerShell: python .\\jpg.pdf.convert.py
   4. The script will dynamically adjust its context. Any file successfully parsed during this 
      second pass will automatically have its newly minted '.md' output AND its original source 
      document migrated back up to your root project directory cleanly.
@@ -74,6 +72,7 @@ import os
 import glob
 import sys
 import shutil
+import signal
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption, ImageFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliOcrOptions
@@ -81,17 +80,27 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliO
 # ==============================================================================
 # CONFIGURATION SETTINGS
 # ==============================================================================
-# Set to True if your system runs out of RAM (std::bad_alloc errors) on large scans.
-# This scales heavy images down to ~150 DPI, protecting the Python memory heap.
 LIMIT_MEMORY_USAGE = False 
-
-# Path to the local Windows Tesseract executable binary
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # ==============================================================================
 
+# Global exit flag for graceful intercept
+shutdown_requested = False
+
+def handle_ctrl_c(signum, frame):
+    global shutdown_requested
+    if shutdown_requested:
+        print("\n[CRITICAL] Force quitting immediately...")
+        sys.exit(1)
+    print("\n[INTERRUPT] Ctrl+C detected! Completing current file action and shutting down gracefully...")
+    print("Press Ctrl+C again to force exit immediately.")
+    shutdown_requested = True
+
+# Register the custom signal handler for clean user termination
+signal.signal(signal.SIGINT, handle_ctrl_c)
+
 print("Initializing Robust Legal Docling Pipeline...")
 
-# 1. Setup Dutch OCR with explicit path bypass
 ocr_options = TesseractCliOcrOptions(
     lang=["nld"],
     tesseract_cmd=TESSERACT_PATH
@@ -100,7 +109,6 @@ ocr_options = TesseractCliOcrOptions(
 pipeline_options = PdfPipelineOptions()
 pipeline_options.ocr_options = ocr_options
 
-# Apply memory optimization logic based on the user-defined toggle
 if LIMIT_MEMORY_USAGE:
     print("[INFO] Low-RAM Optimization enabled. Scaling layout resolution to ~150 DPI.")
     pipeline_options.images_scale = 150 / 72
@@ -114,17 +122,14 @@ converter = DocumentConverter(
     }
 )
 
-# 2. Track absolute pathing and handle folder context adjustments
 current_dir = os.path.abspath(".")
 is_in_failed_folder = os.path.basename(current_dir) == "_FAILED"
 main_dir = os.path.dirname(current_dir) if is_in_failed_folder else current_dir
 failed_dir = current_dir if is_in_failed_folder else os.path.join(current_dir, "_FAILED")
 
-# Ensure the _FAILED subdirectory exists
 if not os.path.exists(failed_dir):
     os.makedirs(failed_dir)
 
-# Supported extensions list. Add "*.docx" or "*.pptx" here to ingest other office files.
 extensions = ["*.pdf", "*.png", "*.jpg", "*.jpeg", "*.webp"]
 document_files = []
 for ext in extensions:
@@ -139,12 +144,15 @@ if is_in_failed_folder:
     print("[CONTEXT] Running inside the _FAILED folder. Successful recoveries will move back up.")
 print("="*40)
 
-# 3. Main process loop
+# Main process loop
 for index, file_path in enumerate(document_files, start=1):
+    # Intercept queue right before opening a file if termination flag is thrown
+    if shutdown_requested:
+        break
+
     file_title = os.path.basename(file_path)
     base_name, _ = os.path.splitext(file_title)
     
-    # Calculate target output locations based on directory depth
     if is_in_failed_folder:
         target_md_path = os.path.join(main_dir, f"{base_name}.md")
         target_source_path = os.path.join(main_dir, file_title)
@@ -152,7 +160,6 @@ for index, file_path in enumerate(document_files, start=1):
         target_md_path = os.path.join(current_dir, f"{base_name}.md")
         target_source_path = file_path
 
-    # Auto-resume skip check
     if os.path.exists(target_md_path):
         print(f"[{index}/{len(document_files)}] Skipping (Already Converted): {file_title}")
         continue
@@ -169,13 +176,11 @@ for index, file_path in enumerate(document_files, start=1):
         print("   -> Writing Markdown data...")
         sys.stdout.flush()
         
-        # Write directly to destination location
         with open(target_md_path, "w", encoding="utf-8") as f:
             f.write(result.document.export_to_markdown())
             
         print(f"   [SUCCESS] Saved Markdown successfully.")
         
-        # If running inside _FAILED subfolder, migrate the source file back to home path
         if is_in_failed_folder:
             print("   -> Moving source file back to main directory...")
             shutil.move(file_path, target_source_path)
@@ -184,10 +189,14 @@ for index, file_path in enumerate(document_files, start=1):
             print(f"   [SUCCESS] Saved to: {os.path.basename(target_md_path)}\n")
             
     except (Exception, BaseException) as e:
+        # Check if the error caught was actually the user typing Ctrl+C during file action
+        if shutdown_requested:
+            print(f"   [INTERRUPT] Conversion paused on user request.\n")
+            break
+            
         print(f"   [ERROR] Failed during conversion. Reason: {e}")
         sys.stdout.flush()
         
-        # If running in root, quarantine the failed document to the _FAILED subfolder
         if not is_in_failed_folder:
             quarantine_path = os.path.join(failed_dir, file_title)
             print(f"   -> Isolating failed document to: .\\_FAILED\\{file_title}")
@@ -201,4 +210,7 @@ for index, file_path in enumerate(document_files, start=1):
             
     sys.stdout.flush()
 
-print("="*40 + "\nBatch directory iteration complete!")
+if shutdown_requested:
+    print("="*40 + "\nPipeline execution suspended cleanly by user. Safe to close.")
+else:
+    print("="*40 + "\nBatch directory iteration complete!")
