@@ -1,21 +1,61 @@
-# Ignore the _FAILED cache directory entirely
-**/_FAILED/
+# =============================================================================
+#  .gitignore
+#
+#  Strategy: deny everything, then allow back only the project's own files.
+#  A whitelist is the safer default here, because this repository sits in the
+#  same folder as real case documents. An allow-list cannot leak a file type
+#  nobody thought of; a deny-list can.
+# =============================================================================
 
-# Ignore all source legal documents and evidence formats
-*.pdf
-*.png
-*.jpg
-*.jpeg
-*.webp
-*.docx
-*.pptx
+# -----------------------------------------------------------------------------
+# 1. Ignore everything, everywhere.
+# -----------------------------------------------------------------------------
+*
 
-# Ignore all generated markdown case files
-*.md
+# -----------------------------------------------------------------------------
+# 2. Allow directories back, so Git can descend into them and find the files
+#    un-ignored below. Without this, the rules in section 3 never get evaluated.
+# -----------------------------------------------------------------------------
+!*/
 
-# Except the documentation README file
+# -----------------------------------------------------------------------------
+# 3. Allow the project's own files, wherever they sit.
+#    The recovery round expects the scripts to be copied into _FAILED, so these
+#    patterns are intentionally not anchored to the root.
+# -----------------------------------------------------------------------------
+!*.py
+!*.cmd
+!*.words
+!.gitignore
+
+# Documentation. Only these two markdown files - never converted output.
 !README.md
+!CUSTOMDIC.md
 
-# Ignore local temporary files and python caches
+# -----------------------------------------------------------------------------
+# 4. Keep the working folders visible on GitHub, but empty.
+#    Each holds a .gitkeep so the folder exists in a fresh clone.
+# -----------------------------------------------------------------------------
+!_SOURCE-DOCS/.gitkeep
+!_FAILED/.gitkeep
+
+# Belt and braces: nothing inside _SOURCE-DOCS other than the placeholder.
+# Section 1 already covers this; the explicit rule documents the intent and
+# survives someone loosening the rules above.
+_SOURCE-DOCS/*
+!_SOURCE-DOCS/.gitkeep
+
+# -----------------------------------------------------------------------------
+# 5. Output folders: never published, not even as an empty folder.
+#    They hold converted case material.
+# -----------------------------------------------------------------------------
+_WITH-DICT.out/
+_NO-DICT.out/
+
+# -----------------------------------------------------------------------------
+# 6. Local noise.
+# -----------------------------------------------------------------------------
 __pycache__/
+*.pyc
 *.tmp
+_run_complete.flag

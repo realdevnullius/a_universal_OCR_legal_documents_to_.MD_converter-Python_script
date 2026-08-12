@@ -1,94 +1,197 @@
 # Legal & Judicial Document to Markdown Batch Converter
 
-A robust, privacy-focused tool optimized for batch-converting complex judicial documents, court decisions, legal correspondence (including dense email threads), and photographed case evidence into structured, LLM-ready Markdown (`.md`). 
+Batch-converts court decisions, legal correspondence, dense email threads, and photographed case evidence into structured, LLM-ready Markdown.
 
-This script uses **IBM's Docling** for high-fidelity layout preservation and **Tesseract OCR** for absolute text accuracy. It is specifically designed to run on **Windows x64 machines using Microsoft Store Python** without running into sandbox permission errors or path configuration issues.
+Built on **IBM Docling** for layout analysis and **Tesseract OCR** for text recognition. Runs entirely offline. Targeted at Windows x64 with Microsoft Store Python, where sandboxed paths tend to break naive setups.
 
-## Key Features
-- **Preserves ASCII Tables:** Accurately extracts AI-generated ASCII formatting tables without breaking cell borders or layouts.
-- **Thread Hierarchy Reconstruction:** Identifies email headers (`Fwd:`, dates, metadata) and separates them cleanly from body arguments.
-- **Windows Store Sandbox Bypass:** Programmatically maps absolute paths to bypass isolated environment failures.
-- **Automated Quarantine & Multi-Pass Recovery:** Automatically separates memory-heavy or problematic files into a `_FAILED` folder so your main queue never locks up.
-- **100% Offline & Private:** Keeps sensitive legal strategies and case files entirely on your local machine—zero cloud API data transfers.
+The tool ships with an optional custom Dutch legal word list, and with the tooling to **measure whether that word list actually helps** — including honest results from a 249-document run. See [CUSTOMDIC.md](CUSTOMDIC.md) to build one for your own language and subject area.
 
 ---
 
-## Prerequisites (Windows x64 Setup)
+## Folder layout
 
-### 1. Install Python (Via Microsoft Store)
-1. Open the **Microsoft Store** on your Windows x64 machine.
-2. Search for **Python 3.9** (or a newer stable release like 3.10/3.11) and click **Get/Install**.
-3. *Note: This script is explicitly optimized to handle the isolated user profile paths and sandboxed environment limitations created by the Microsoft Store version of Python.*
+The repository root holds only scripts. Everything else lives in four working folders, created automatically on first run:
 
-### 2. Install Tesseract OCR
-1. Download the Windows x64 binaries installer (e.g., from UB Mannheim or official Tesseract repositories). For my script, I used https://github.com/UB-Mannheim/tesseract/wiki (2026).
-2. Run the installer. **Important:** During the setup wizard, expand the **Additional Language Data** menu and check the box for **Dutch** (`nld`), or any other required pack from the supported list below.
-3. By default, it will install to `C:\Program Files\Tesseract-OCR\tesseract.exe`.
+```
+.\                      the scripts
+  _SOURCE-DOCS\         put your documents here
+  _FAILED\              documents that failed to convert (usually RAM)
+  _WITH-DICT.out\       markdown from a run WITH the word list
+  _NO-DICT.out\         markdown from a run WITHOUT it
+```
 
-### 3. Install Python Packages
-Open Windows PowerShell and run the following command to install the required layout extraction frameworks:
+Markdown is written straight into its output folder. Nothing is staged and moved afterwards, so an interrupted run leaves no files stranded and simply resumes where it stopped.
+
+---
+
+## Files in this repository
+
+| File | Purpose |
+|---|---|
+| `jpg.pdf.convert.py` | The converter. All settings live at the top. |
+| `ocr_words_patch.py` | Injects `--user-words` into the Tesseract call Docling makes internally. Docling exposes no way to pass extra flags, so this intercepts `subprocess.run`. |
+| `ocr-without-dict.cmd` | Runs the conversion **without** the word list. This is the baseline and the recommended default. |
+| `ocr-with-dict.cmd` | The same conversion **with** the word list, for comparison. |
+| `dutch_legal_lean.words` | 1,715 Dutch legal terms and abbreviations. |
+| `deduplicate.py` | Compares the two output folders and reports whether the word list changed anything. |
+| `dedup_outputs.cmd` | Wrapper for `deduplicate.py`: pre-flight counts, dry run, confirmation, then a summary. |
+| `check_markdown.py` | Flags markdown that may be missing pages. |
+| `CUSTOMDIC.md` | How the word list works, and a ready-made AI prompt to build your own. |
+
+---
+
+## Setup (Windows x64)
+
+### 1. Python
+
+Install **Python 3.9 or newer** from the Microsoft Store. The scripts are written to survive the isolated user profile paths that version creates.
+
+### 2. Tesseract OCR
+
+Download the Windows x64 installer, for example from [UB Mannheim](https://github.com/UB-Mannheim/tesseract/wiki).
+
+During setup, expand **Additional language data** and tick the language you need — `nld` for Dutch. The default install path is `C:\Program Files\Tesseract-OCR\tesseract.exe`; if you change it, update `TESSERACT_PATH` at the top of `jpg.pdf.convert.py`.
+
+### 3. Python packages
 
 ```powershell
 pip install docling
 ```
 
+---
+
+## Usage
+
+1. Put your documents in `.\_SOURCE-DOCS\`
+2. Double-click `ocr-without-dict.cmd` (the baseline) or `ocr-with-dict.cmd`, or run either from PowerShell.
+
+Both wrappers force the working directory to their own folder, so launching from Explorer, from a shortcut, or via *Run as administrator* all behave identically.
+
+Supported input: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.webp`. Docling also reads `.docx`, `.pptx`, `.html`, `.rtf` — add the extension to the `extensions` list in the script to enable it.
+
+### Output naming
+
+```
+brief.pdf   ->  brief.pdf.md        (no word list)
+brief.pdf   ->  brief.pdf.dic.md    (word list active)
+```
+
+The source extension is kept, so `scan.pdf` and `scan.jpg` cannot overwrite each other's output. The `.dic` marker lets both versions of the same document be compared, or handed to an AI Agent together.
 
 ---
 
-## Supported OCR Languages & Scripts
+## Settings
 
-While this pipeline targets Dutch (`nld`) out of the box, you can modify the `lang=["nld"]` array at the top of the script to include any of the **41 language data packs** available during the Tesseract Windows installation:
+All at the top of `jpg.pdf.convert.py`:
 
-* **Core Components:** `eng` (English), `nld` (Dutch), `equ` (Math/Equations), `osd` (Orientation & Script Detection)
-* **East Asian Layouts (Horizontal & Vertical):** 
-  * Simplified Chinese (`script\HanS`, `script\HanS_vert`)
-  * Traditional Chinese (`script\HanT`, `script\HanT_vert`)
-  * Japanese (`script\Japanese`, `script\Japanese_vert`)
-  * Korean (`script\Hangul`, `script\Hangul_vert`)
-* **Regional Scripts & Alphabets:** `script\Arabic`, `script\Armenian`, `script\Bengali`, `script\Cyrillic`, `script\Devanagari`, `script\Ethiopic`, `script\Fraktur` (Gothic text), `script\Georgian`, `script\Greek`, `script\Gujarati`, `script\Gurmukhi`, `script\Hebrew`, `script\Kannada`, `script\Khmer`, `script\Lao`, `script\Latin`, `script\Malayalam`, `script\Myanmar`, `script\Oriya`, `script\Sinhala`, `script\Syriac`, `script\Tamil`, `script\Telugu`, `script\Thaana`, `script\Thai`, `script\Tibetan`, `script\Vietnamese`, `script\Canadian_Aboriginal`, `script\Cherokee`
+| Setting | Default | What it does |
+|---|---|---|
+| `LANGUAGE` | `"EN"` | Language of the script's own messages. `"EN"` or `"NL"`. Not the OCR language. |
+| `LIMIT_MEMORY_USAGE` | `False` | Set to `True` to parse at ~150 DPI instead of full resolution. Roughly quarters memory use per page. |
+| `TESSERACT_PATH` | Program Files | Full path to `tesseract.exe`. |
+| `QUARANTINE_INCOMPLETE` | `True` | Refuse to write markdown when Docling dropped pages. Leave this on. |
+| `MIN_FREE_MB` | `2000` | Warn before a document when usable memory falls below this. `0` disables. |
+| `MEM_WARN_STEP_MB` | `500` | After the first warning, stay quiet until memory drops another this much. |
 
----
+The OCR language is set separately, in `lang=["nld"]`. Add further Tesseract language codes there.
 
-## How to Use
-
-1. Place `jpg.pdf.convert.py` into the folder containing your source files.
-2. Open PowerShell in that directory and run:
-   ```powershell
-   python .\jpg.pdf.convert.py
-   ```
-3. The script will scan for documents, run layout parsing, apply your selected OCR language packs, and save matching `.md` files in place.
-
-### Supported File Formats
-By default, the script processes:
-- **PDFs:** Digital exports, text reports, or scanned case files (`.pdf`)
-- **Images:** Photographed evidence, cellphone snapshots, or page captures (`.png`, `.jpg`, `.jpeg`, `.webp`)
-
-*Tip: To process office assets like Word documents (`*.docx`) or presentations (`*.pptx`), simply open the script and add them to the `extensions` array in Section 2.*
+`LANGUAGE` can also be overridden without editing the script, by setting `SCRIPT_LANG=NL` in the `.cmd` wrapper or in your shell. The wrappers set it explicitly, so changing one line there is enough.
 
 ---
 
-## Automated Multi-Round Recovery Lifecycle
+## Recovery workflow
 
-Processing hundreds of heavy image scans sequentially can occasionally cause temporary Windows system memory heap bottlenecks (`std::bad_alloc`). This project resolves that issue with a built-in automated quarantine architecture:
+A document that fails — usually `std::bad_alloc` when RAM runs out — is moved to `_FAILED` and no markdown is written for it. A partial document is indistinguishable from a complete one later on, which is exactly the kind of silent error a legal file cannot afford.
 
 ```
-[Main Folder] ──► (Conversion Fails) ──► [Auto-Moved to _FAILED Subfolder]
-                                                    │
-[Main Folder] ◄── (Auto-Migrated Back) ◄── [Re-Run Script inside _FAILED]
+_SOURCE-DOCS\  ──►  (conversion fails)  ──►  _FAILED\
+                                                │
+_SOURCE-DOCS\  ◄──  (succeeds on retry)  ◄──  run the script inside _FAILED\
 ```
 
-### The 2-Step Recovery Workflow:
-1. **First Pass:** Let the primary script finish running in your main directory. Any document that encounters a system processing block is automatically moved down into a newly created `._FAILED/` directory.
-2. **Second Pass:** Copy the `jpg.pdf.convert.py` script directly into that `_FAILED` folder and execute it there:
-   ```powershell
-   cd .\_FAILED
-   python .\jpg.pdf.convert.py
-   ```
-   *System memory usually clears up between runs.* When executed inside the `_FAILED` boundary, any file that successfully completes on this second round will automatically have its newly minted `.md` document **and** its original source file migrated cleanly back up to your root home folder.
+To retry:
 
-### System RAM Constraint Toggle
-If you have files that stubbornly fail due to low machine memory, open the script and change the toggle at the top:
-```python
-LIMIT_MEMORY_USAGE = True
+1. Copy **both** `jpg.pdf.convert.py` and `ocr_words_patch.py` into `.\_FAILED\`
+2. Run the `.cmd` there, or `python .\jpg.pdf.convert.py`
+
+Sources are then read from `_FAILED`, markdown still goes to the output folder one level up, and a document that finally converts moves back to `_SOURCE-DOCS`.
+
+Memory usually frees up between runs, so a second pass often succeeds where the first did not. If a document keeps failing, set `LIMIT_MEMORY_USAGE = True` or split very large PDFs.
+
+---
+
+## What a run reports
+
+Every run ends with a summary:
+
 ```
-This forces the layout pipeline to optimize resources by downscaling processing images to ~150 DPI—saving up to 75% RAM while remaining crisp enough for accurate text decoding.
+Batch complete!
+  Fully processed : 249
+  Incomplete      : 0
+  Failed          : 0
+  Skipped         : 0
+
+  Total running time: 1h 04m 10s
+  Average per document: 15.5s  (249 converted)
+  Word list was ACTIVE during this run.
+```
+
+`Average per document` is the figure to compare between runs, since the counts rarely match exactly.
+
+On a clean finish the script writes `_run_complete.flag`, which the `.cmd` wrapper checks. This matters because a C-level allocation failure inside Tesseract or PyTorch can kill Python with **exit code 0 and no traceback** — the exit code alone cannot be trusted. If the marker is absent, the wrapper says so and tells you the run can simply be started again.
+
+---
+
+## Does the word list actually help?
+
+Run both wrappers over the same documents, then double-click `dedup_outputs.cmd`.
+
+It counts both output folders first — the comparison only means something when the two runs covered the same documents — then shows the dry run, asks before deleting anything, and finishes with the figure that answers the question:
+
+```
+  The word list changed the output of 2 of 249 documents (0.8%).
+```
+
+The scripted equivalent, if you prefer it:
+
+```powershell
+python deduplicate.py --dry-run
+python deduplicate.py
+```
+
+It pairs `_WITH-DICT.out\<name>.dic.md` with `_NO-DICT.out\<name>.md`. Identical pairs mean the word list changed nothing, and the `.dic.md` copy is deleted. Differing pairs are kept, with the differing words listed.
+
+**Results from the 249-document benchmark:**
+
+| | |
+|---|---|
+| Identical | 247 |
+| Different | 2 (0.8%) |
+
+Of those two: one genuine fix (`huipofficier` → `hulpofficier`), and one artefact of the comparison itself — the baseline emitted one extra token, after which the word-by-word walk falls out of step and reports a cascade of pseudo-differences.
+
+So across 249 documents the word list improved exactly one word, and broke nothing.
+
+An earlier round of the same benchmark also produced a regression (`Piketadvocaat` → `piketadvocaat`), caused by a word list that had been lowercased throughout. Adding the capitalised variant of every entry fixed it, and re-running that document confirmed the fix. This is why `dutch_legal_lean.words` carries both forms.
+
+Net effect: roughly zero. On Tesseract 4 and 5 the LSTM engine weights its visual recognition far above dictionary hints, so `--user-words` nudges rather than corrects. The run without the word list was also measurably faster.
+
+The tooling is here so you can measure this for your own material instead of taking anyone's word for it — including mine.
+
+---
+
+## Known limitations
+
+**The pipeline is not deterministic.** Two runs over the same file produced different output, and in one of them a text block was classified as `<!-- image -->` and its text disappeared. Spot-check anything you intend to rely on.
+
+**Memory is the real bottleneck.** Docling's layout model reserves far more than the document size suggests. PDFs beyond ~150 pages are the usual failure point.
+
+**Not a substitute for reading the original.** OCR output is a search and analysis aid. For anything that matters, check it against the source document.
+
+---
+
+## Privacy
+
+Everything runs locally. No cloud APIs, no telemetry, no document leaves the machine.
+
+The included `.gitignore` uses an allow-list: everything is ignored, and only the project's own files are added back. `_SOURCE-DOCS\` and `_FAILED\` appear on GitHub as empty folders; the output folders are never published at all. If you fork this, keep that arrangement — a deny-list can miss a file type nobody anticipated.
