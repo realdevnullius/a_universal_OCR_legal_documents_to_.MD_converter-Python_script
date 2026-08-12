@@ -1,5 +1,7 @@
 # Legal & Judicial Document to Markdown Batch Converter
 
+**[Nederlandse versie (LEESMIJ.md)](LEESMIJ.md)**
+
 Batch-converts court decisions, legal correspondence, dense email threads, and photographed case evidence into structured, LLM-ready Markdown.
 
 Built on **IBM Docling** for layout analysis and **Tesseract OCR** for text recognition. Runs entirely offline. Targeted at Windows x64 with Microsoft Store Python, where sandboxed paths tend to break naive setups.

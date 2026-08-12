@@ -31,6 +31,7 @@
 # Documentation. Only these two markdown files - never converted output.
 !README.md
 !CUSTOMDIC.md
+!LEESMIJ.md
 
 # -----------------------------------------------------------------------------
 # 4. Keep the working folders visible on GitHub, but empty.
